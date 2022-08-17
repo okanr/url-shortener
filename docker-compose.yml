@@ -1,0 +1,56 @@
+version: '3.8'
+services:
+  app:
+    container_name: app
+    build:
+      context: ./
+    image: url-shortener
+    depends_on:
+      - mongo
+      - cache
+    ports:
+      - '8000:8000'
+    command: bash -c "
+        python url_shortener/manage.py makemigrations &&
+        python url_shortener/manage.py migrate &&
+        python url_shortener/manage.py runserver 0.0.0.0:8000
+      "
+    environment:
+      - MONGODB_ADMIN_USERNAME=root
+      - MONGODB_ADMIN_PASSWORD=example
+      - MONGODB_URL=mongodb://root:example@mongo:27017/
+  celery_worker:
+    build:
+      context: ./
+    image: url-shortener
+    command: bash -c "
+        cd url_shortener && 
+        celery -A url_shortener worker -l info
+      "
+    depends_on:
+      - rabbitmq
+      - mongo
+  mongo:
+    image: mongo
+    restart: always
+    environment:
+      - MONGO_INITDB_DATABASE=url_shortener
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=example
+    ports:
+      - '27017:27017'
+  cache:
+     image: redis:6.2-alpine
+     restart: always
+     ports:
+       - '6379:6379'
+     command: redis-server --loglevel warning
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: 'rabbitmq'
+    environment:
+      - RABBITMQ_DEFAULT_USER=demo
+      - RABBITMQ_DEFAULT_PASS=demo
+    ports:
+      - '5672:5672'
+      - '15672:15672'
