@@ -63,7 +63,7 @@ def get_long_url(request, url):
     if cache.get(url):
         long_url = cache.get(url)
     else:
-        obj = get_object_or_404(URLShortener, short=url)
+        obj = get_object_or_404(URLShortener.objects.get(short=url, expire_date__lt=datetime.datetime.now()))
         long_url = obj.url
     task_sync_cache_and_db.delay(url)
     return HttpResponseRedirect(long_url)
